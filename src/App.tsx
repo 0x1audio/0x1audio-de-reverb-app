@@ -1,6 +1,6 @@
 import { useRef, useState } from "react"
 import { XIcon } from "@phosphor-icons/react"
-import { Button, Card, CardContent, CardHeader, CardTitle, Dropzone, FolderField, Progress, toast, useFileDrop } from "@0x1audio/design-system"
+import { Button, Dropzone, FolderField, Label, Progress, toast, useFileDrop } from "@0x1audio/design-system"
 import { host, job } from "@0x1audio/sdk/page"
 
 import lava from "./chroma-lava.jpg"
@@ -134,14 +134,10 @@ export function App() {
             {notice ? <p className="text-center text-sm text-muted-foreground">{notice}</p> : null}
           </div>
 
-          <Card className="gap-3 py-4">
-            <CardHeader>
-              <CardTitle>Save to</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <FolderField value={output} disabled={pending} onValueChange={setOutput} onBrowse={() => void chooseFolder()} />
-            </CardContent>
-          </Card>
+          <div className="flex flex-col gap-2">
+            <Label>Save to</Label>
+            <FolderField value={output} disabled={pending} onValueChange={setOutput} onBrowse={() => void chooseFolder()} />
+          </div>
 
           <div className="flex flex-col gap-3">
             {outputs.length ? (
