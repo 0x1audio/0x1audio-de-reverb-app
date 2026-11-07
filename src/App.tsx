@@ -1,5 +1,6 @@
 import { useRef, useState } from "react"
-import { Button, Dropzone, Label, Progress, useFileDrop } from "@0x1audio/design-system"
+import { XIcon } from "@phosphor-icons/react"
+import { Button, Card, CardContent, CardHeader, CardTitle, Dropzone, FolderField, Progress, toast, useFileDrop } from "@0x1audio/design-system"
 import { host, job } from "@0x1audio/sdk/page"
 
 import lava from "./chroma-lava.jpg"
@@ -16,15 +17,16 @@ export function App() {
   const [output, setOutput] = useState("")
   const [pending, setPending] = useState(false)
   const [progress, setProgress] = useState(0)
-  const [message, setMessage] = useState("")
-  const [stopped, setStopped] = useState(false)
+  const [status, setStatus] = useState("")
+  const [stopping, setStopping] = useState(false)
   const [outputs, setOutputs] = useState<string[]>([])
   const stop = useRef<AbortController | null>(null)
+  const canceling = useRef(false)
   const dragging = useFileDrop((dropped) => {
     if (pending) return
     const bridge = host()
     if (!bridge?.pathFor) {
-      setMessage("Update 0x1audio to drop files here, or use Choose audio.")
+      toast.error("Update 0x1audio to drop files here, or use Choose audio.")
       return
     }
     const paths = dropped.map((item) => bridge.pathFor?.(item) ?? "").filter(Boolean)
@@ -32,21 +34,18 @@ export function App() {
     choose(paths[0], paths.length > 1)
   })
 
-  const folder = output ? basename(output) : ""
   const name = file ? basename(file) : ""
 
   function choose(next: string, several: boolean) {
     setFile(next)
     setNotice(several ? `Using ${basename(next)}. One recording at a time.` : "")
     setOutputs([])
-    setMessage("")
-    setStopped(false)
   }
 
   async function chooseFile() {
     const bridge = host()
     if (!bridge?.pick) {
-      setMessage("Reopen this app in 0x1audio.")
+      toast.error("Reopen this app in 0x1audio.")
       return
     }
     const picked = await bridge.pick("file")
@@ -56,7 +55,7 @@ export function App() {
   async function chooseFolder() {
     const bridge = host()
     if (!bridge?.pick) {
-      setMessage("Reopen this app in 0x1audio.")
+      toast.error("Reopen this app in 0x1audio.")
       return
     }
     const picked = await bridge.pick("folder")
@@ -67,28 +66,47 @@ export function App() {
     if (!file || pending) return
     const controller = new AbortController()
     stop.current = controller
+    canceling.current = false
+    setStopping(false)
     setPending(true)
     setProgress(0)
+    setStatus("Getting ready")
     setOutputs([])
-    setMessage("")
-    setStopped(false)
     try {
       const result = await job<JobResult>(
         "start",
-        { files: [file], output },
-        (fraction) => setProgress(fraction),
+        { files: [file], output: output.trim() },
+        (fraction, label) => {
+          setProgress(fraction)
+          if (!canceling.current && label) setStatus(label)
+        },
         controller.signal,
       )
-      if (result.stopped) setStopped(true)
-      else if (result.outputs.length) setOutputs(result.outputs)
-    } catch (error) {
-      if (!controller.signal.aborted) {
-        setMessage(error instanceof Error ? error.message : "The echo couldn't be removed. Your original file was not changed.")
+      if (result.stopped) toast("Canceled", { description: "Nothing was saved." })
+      else if (result.outputs.length) {
+        setOutputs(result.outputs)
+        toast.success("The room echo is gone", {
+          description: output.trim() ? `Saved to ${basename(output.trim())}.` : "Saved in the same folder as the audio.",
+          action: { label: "Show in folder", onClick: () => void host()?.reveal?.(result.outputs[0]) },
+        })
       }
+    } catch (error) {
+      if (controller.signal.aborted) toast("Canceled", { description: "Nothing was saved." })
+      else toast.error(error instanceof Error ? error.message : "The echo couldn't be removed. Your original file was not changed.")
     } finally {
       stop.current = null
+      canceling.current = false
+      setStopping(false)
       setPending(false)
     }
+  }
+
+  function cancel() {
+    if (canceling.current) return
+    canceling.current = true
+    setStopping(true)
+    setStatus("Canceling…")
+    stop.current?.abort()
   }
 
   const saved = outputs[0] ? basename(outputs[0]) : ""
@@ -116,46 +134,35 @@ export function App() {
             {notice ? <p className="text-center text-sm text-muted-foreground">{notice}</p> : null}
           </div>
 
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-3">
-              <Label className="shrink-0">Save to</Label>
-              <span className="min-w-0 flex-1 truncate text-sm">{folder || "Same folder as the audio"}</span>
-              <Button type="button" variant="outline" className="h-10 shrink-0" disabled={pending} onClick={() => void chooseFolder()}>
-                Choose folder
-              </Button>
-            </div>
-            {output ? (
-              <button type="button" className="self-start text-sm text-muted-foreground underline-offset-4 hover:underline" disabled={pending} onClick={() => setOutput("")}>
-                Same folder as the audio
-              </button>
-            ) : null}
-          </div>
+          <Card className="gap-3 py-4">
+            <CardHeader>
+              <CardTitle>Save to</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <FolderField value={output} disabled={pending} onValueChange={setOutput} onBrowse={() => void chooseFolder()} />
+            </CardContent>
+          </Card>
 
           <div className="flex flex-col gap-3">
             {outputs.length ? (
-              <>
-                <p className="text-sm">{folder ? `Saved ${saved} to ${folder}.` : `Saved ${saved} next to the original.`}</p>
-                <Button type="button" variant="outline" className="h-10 w-full" onClick={() => void host()?.reveal?.(outputs[0])}>
-                  Show in folder
-                </Button>
-              </>
+              <Button type="button" variant="outline" className="h-10 w-full" onClick={() => void host()?.reveal?.(outputs[0])}>
+                Show {saved}
+              </Button>
             ) : null}
             {pending ? (
               <>
-                <p className="text-sm">Taking the room echo out of {name}…</p>
-                <p className="text-sm text-muted-foreground">This can take a few minutes.</p>
-                <Progress value={Math.round(progress * 100)} />
-                <Button type="button" variant="outline" className="h-10 w-full" onClick={() => stop.current?.abort()}>
-                  Cancel
+                <p className="text-sm">{status || "Getting ready"}</p>
+                <Progress value={Math.round(progress * 100)} aria-label={status || "Progress"} />
+                <Button type="button" variant="destructive" className="h-10 w-full" onClick={cancel}>
+                  <XIcon size={16} />
+                  {stopping ? "Canceling…" : "Cancel"}
                 </Button>
               </>
             ) : (
               <Button type="button" className="h-12 w-full text-base" disabled={!file} onClick={() => void start()}>
-                Remove room echo
+                Start processing
               </Button>
             )}
-            {stopped ? <p className="text-sm text-muted-foreground">Stopped. Nothing was saved.</p> : null}
-            {message ? <p className="text-sm">{message}</p> : null}
           </div>
         </div>
       </main>

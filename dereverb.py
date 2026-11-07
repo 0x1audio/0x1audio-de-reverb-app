@@ -38,14 +38,14 @@ def _dry(call, source: str, output: str, audio_format: str) -> dict:
     folder = Path(output)
     before = {item.name for item in folder.glob(f"{Path(source).stem}*")} if folder.is_dir() else set()
     try:
-        state = {"fraction": 0.0}
-        call.progress(0, "Taking the room echo out…")
+        state = {"fraction": 0.0, "label": "Getting ready"}
+        call.progress(0, state["label"])
 
         def on_progress(fraction: float, state=state) -> None:
-            if _cancelled(call):
-                raise _Stopped()
-            state["fraction"] = fraction
-            call.progress(fraction, "Taking the room echo out…")
+            _show(call, state, fraction)
+
+        def on_status(text: str, state=state) -> None:
+            _show(call, state, state["fraction"], _phase(text, "Removing echo"))
 
         produced = separate_file(
             source,
@@ -64,9 +64,9 @@ def _dry(call, source: str, output: str, audio_format: str) -> dict:
             denoise=False,
             high_end=False,
             tta=False,
-            gpu=False,
+            gpu=_use_gpu(),
             on_progress=on_progress,
-            on_status=lambda _text, state=state: call.progress(state["fraction"], "Taking the room echo out…"),
+            on_status=on_status,
             console_prefix="",
         )
         written.extend(_present(path) for path in produced)
@@ -83,6 +83,51 @@ def _dry(call, source: str, output: str, audio_format: str) -> dict:
         library.add("sound", path, Path(path).stem)
     call.progress(1, "Saved.")
     return {"outputs": written, "elapsed": time.strftime("%H:%M:%S", time.gmtime(int(time.perf_counter() - started)))}
+
+
+def _show(call, state: dict, fraction: float, label: str | None = None) -> None:
+    if _cancelled(call):
+        raise _Stopped()
+    state["fraction"] = max(state["fraction"], min(1, max(0, fraction)))
+    if label:
+        state["label"] = label
+    call.progress(state["fraction"], state["label"])
+
+
+def _phase(text: str, working: str) -> str | None:
+    lowered = " ".join(str(text).split()).lower()
+    if not lowered or lowered in {"done!", "done"}:
+        return None
+    if "download" in lowered:
+        return "Downloading model"
+    if "install" in lowered or "runtime" in lowered:
+        return "Getting ready"
+    if "loading" in lowered:
+        return "Loading the model"
+    if "sav" in lowered or "export" in lowered:
+        return "Saving"
+    if "inference" in lowered or "process" in lowered:
+        return working
+    return None
+
+
+def _use_gpu() -> bool:
+    try:
+        import torch
+    except Exception:
+        return False
+    try:
+        if torch.cuda.is_available():
+            return True
+    except Exception:
+        pass
+    mps = getattr(getattr(torch, "backends", None), "mps", None)
+    if mps is None:
+        return False
+    try:
+        return bool(mps.is_available())
+    except Exception:
+        return False
 
 
 def _cancelled(call) -> bool:
