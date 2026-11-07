@@ -108,7 +108,7 @@ export function App() {
         <div className="flex flex-col gap-8">
           <div className="flex flex-col gap-2">
             <Dropzone
-              description={file ? <span className="block truncate">{name}</span> : "A vocal or a full song."}
+              description={file ? <span className="block truncate">{name}</span> : "A recording with room echo."}
               dragging={dragging}
               disabled={pending}
               onChoose={() => void chooseFile()}
@@ -117,12 +117,10 @@ export function App() {
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label>Save to</Label>
-            <div className="flex gap-2">
-              <div className="flex h-10 min-w-0 flex-1 items-center rounded-lg bg-card px-4 text-sm">
-                <span className="truncate">{folder || "Same folder as the audio"}</span>
-              </div>
-              <Button type="button" variant="outline" className="h-10" disabled={pending} onClick={() => void chooseFolder()}>
+            <div className="flex items-center gap-3">
+              <Label className="shrink-0">Save to</Label>
+              <span className="min-w-0 flex-1 truncate text-sm">{folder || "Same folder as the audio"}</span>
+              <Button type="button" variant="outline" className="h-10 shrink-0" disabled={pending} onClick={() => void chooseFolder()}>
                 Choose folder
               </Button>
             </div>
