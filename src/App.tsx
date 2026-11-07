@@ -1,5 +1,5 @@
 import { useRef, useState } from "react"
-import { Button, Dropzone, Label, Progress, useFileDrop } from "@0x1audio/design-system"
+import { Button, Dropzone, Logo, Progress, useFileDrop } from "@0x1audio/design-system"
 import { host, job } from "@0x1audio/sdk/page"
 
 import lava from "./chroma-lava.jpg"
@@ -32,7 +32,7 @@ export function App() {
     choose(paths[0], paths.length > 1)
   })
 
-  const folder = output ? basename(output) : ""
+  const folder = output ? basename(output) : "Next to the original"
   const name = file ? basename(file) : ""
 
   function choose(next: string, several: boolean) {
@@ -98,11 +98,12 @@ export function App() {
       <header className="relative h-32">
         <img src={lava} alt="" className="pointer-events-none absolute inset-0 size-full object-cover object-[center_22%]" />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/10 from-10% to-background" />
+        <Logo className="absolute top-4 left-6 h-5 text-white" />
       </header>
       <main className="relative mx-auto flex w-full max-w-md flex-col px-6 pb-10">
         <div className="flex flex-col items-center gap-2 pb-8 text-center">
           <h1 className="text-4xl font-semibold tracking-tight text-balance">De-reverb</h1>
-          <p className="text-sm text-muted-foreground">Take the room echo out. Everything else stays.</p>
+          <p className="text-sm text-muted-foreground">Take the room echo out. The rest of the sound stays. Your original file stays too.</p>
         </div>
 
         <div className="flex flex-col gap-8">
@@ -118,23 +119,24 @@ export function App() {
 
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-3">
-              <Label className="shrink-0">Save to</Label>
-              <span className="min-w-0 flex-1 truncate text-sm">{folder || "Same folder as the audio"}</span>
+              <span className="shrink-0 text-sm text-muted-foreground">Save to</span>
+              <span className="min-w-0 truncate text-sm" title={output || "Next to the original"}>{folder}</span>
               <Button type="button" variant="outline" className="h-10 shrink-0" disabled={pending} onClick={() => void chooseFolder()}>
                 Choose folder
               </Button>
             </div>
             {output ? (
               <button type="button" className="self-start text-sm text-muted-foreground underline-offset-4 hover:underline" disabled={pending} onClick={() => setOutput("")}>
-                Same folder as the audio
+                Next to the original
               </button>
             ) : null}
+            <p className="text-sm text-muted-foreground">WAV, MP3, FLAC, and OGG come back in that same format. Anything else comes back as WAV.</p>
           </div>
 
           <div className="flex flex-col gap-3">
             {outputs.length ? (
               <>
-                <p className="text-sm">{folder ? `Saved ${saved} to ${folder}.` : `Saved ${saved} next to the original.`}</p>
+                <p className="text-sm">{output ? `Saved ${saved} to ${folder}.` : `Saved ${saved} next to the original.`}</p>
                 <Button type="button" variant="outline" className="h-10 w-full" onClick={() => void host()?.reveal?.(outputs[0])}>
                   Show in folder
                 </Button>
@@ -150,8 +152,13 @@ export function App() {
                 </Button>
               </>
             ) : (
-              <Button type="button" className="h-12 w-full text-base" disabled={!file} onClick={() => void start()}>
-                Remove room echo
+              <Button
+                type="button"
+                className={file ? "h-12 w-full text-base" : "h-12 w-full border border-border bg-transparent text-base text-foreground disabled:border-border disabled:bg-transparent disabled:text-foreground"}
+                disabled={!file}
+                onClick={() => void start()}
+              >
+                {file ? "Remove room echo" : "Add a recording first"}
               </Button>
             )}
             {stopped ? <p className="text-sm text-muted-foreground">Stopped. Nothing was saved.</p> : null}
