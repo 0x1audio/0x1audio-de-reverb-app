@@ -1,6 +1,6 @@
 import { useRef, useState } from "react"
 import { XIcon } from "@phosphor-icons/react"
-import { Button, Dropzone, FolderField, Label, Progress, toast, useFileDrop } from "@0x1audio/design-system"
+import { Button, Dropzone, FolderField, Label, Progress, SuccessCard, toast, useFileDrop } from "@0x1audio/design-system"
 import { host, job } from "@0x1audio/sdk/page"
 
 import lava from "./chroma-lava.jpg"
@@ -109,8 +109,6 @@ export function App() {
     stop.current?.abort()
   }
 
-  const saved = outputs[0] ? basename(outputs[0]) : ""
-
   return (
     <div className="relative min-h-svh bg-background text-foreground">
       <header className="relative h-32">
@@ -140,16 +138,11 @@ export function App() {
           </div>
 
           <div className="flex flex-col gap-3">
-            {outputs.length ? (
-              <Button type="button" variant="outline" className="h-10 w-full" onClick={() => void host()?.reveal?.(outputs[0])}>
-                Show {saved}
-              </Button>
-            ) : null}
             {pending ? (
               <>
                 <p className="text-sm">{status || "Getting ready"}</p>
-                <Progress value={Math.round(progress * 100)} aria-label={status || "Progress"} />
-                <Button type="button" variant="destructive" className="h-10 w-full" onClick={cancel}>
+                <Progress pulse value={Math.round(progress * 100)} aria-label={status || "Progress"} />
+                <Button type="button" variant="outline-destructive" className="h-10 w-full" onClick={cancel}>
                   <XIcon size={16} />
                   {stopping ? "Canceling…" : "Cancel"}
                 </Button>
@@ -159,6 +152,16 @@ export function App() {
                 Start processing
               </Button>
             )}
+            {outputs.length ? (
+              <SuccessCard
+                className="mt-3"
+                action={
+                  <Button type="button" variant="outline" onClick={() => void host()?.reveal?.(outputs[0])}>
+                    Show in Folder
+                  </Button>
+                }
+              />
+            ) : null}
           </div>
         </div>
       </main>
