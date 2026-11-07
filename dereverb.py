@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+import traceback
 from pathlib import Path
 
 from ox1audio import job, library, run
@@ -47,28 +48,20 @@ def _dry(call, source: str, output: str, audio_format: str) -> dict:
         def on_status(text: str, state=state) -> None:
             _show(call, state, state["fraction"], _phase(text, "Removing echo"))
 
-        produced = separate_file(
-            source,
-            output,
-            method="vr",
-            model=MODEL,
-            secondary=None,
-            algorithm="avg",
-            stems=["No Reverb"],
-            audio_format=audio_format,
-            segment=8,
-            overlap=0.25,
-            aggression=10,
-            window=1024,
-            shifts=0,
-            denoise=False,
-            high_end=False,
-            tta=False,
-            gpu=_use_gpu(),
-            on_progress=on_progress,
-            on_status=on_status,
-            console_prefix="",
-        )
+        gpu = _use_gpu()
+        try:
+            produced = _once(source, output, audio_format, gpu, on_progress, on_status)
+        except _Stopped:
+            raise
+        except Exception:
+            if not gpu:
+                raise
+            traceback.print_exc()
+            _cleanup(folder, Path(source).stem, before)
+            state["fraction"] = 0.0
+            state["label"] = "Getting ready"
+            call.progress(0, state["label"])
+            produced = _once(source, output, audio_format, False, on_progress, on_status)
         written.extend(_present(path) for path in produced)
     except _Stopped:
         _cleanup(folder, Path(source).stem, before)
@@ -77,12 +70,38 @@ def _dry(call, source: str, output: str, audio_format: str) -> dict:
         _cleanup(folder, Path(source).stem, before)
         raise ValueError(_plain(str(exc))) from exc
     except Exception as exc:
+        traceback.print_exc()
         _cleanup(folder, Path(source).stem, before)
         raise ValueError("The echo couldn't be removed. Your original file was not changed.") from exc
     for path in written:
         library.add("sound", path, Path(path).stem)
     call.progress(1, "Saved.")
     return {"outputs": written, "elapsed": time.strftime("%H:%M:%S", time.gmtime(int(time.perf_counter() - started)))}
+
+
+def _once(source, output, audio_format, gpu, on_progress, on_status):
+    return separate_file(
+        source,
+        output,
+        method="vr",
+        model=MODEL,
+        secondary=None,
+        algorithm="avg",
+        stems=["No Reverb"],
+        audio_format=audio_format,
+        segment=8,
+        overlap=0.25,
+        aggression=10,
+        window=1024,
+        shifts=0,
+        denoise=False,
+        high_end=False,
+        tta=False,
+        gpu=gpu,
+        on_progress=on_progress,
+        on_status=on_status,
+        console_prefix="",
+    )
 
 
 def _show(call, state: dict, fraction: float, label: str | None = None) -> None:
