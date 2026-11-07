@@ -1,0 +1,139 @@
+"""De-reverb worker. Every run uses UVR-DeEcho-DeReverb by FoxJoy."""
+
+from __future__ import annotations
+
+import time
+from pathlib import Path
+
+from ox1audio import job, library, run
+
+from separate import separate_file
+
+MODEL = "UVR-DeEcho-DeReverb by FoxJoy"
+_KEEP = {"wav", "flac", "mp3", "ogg"}
+
+
+class _Stopped(Exception):
+    pass
+
+
+@job
+def start(call):
+    body = call.body if isinstance(call.body, dict) else {}
+    files = body.get("files")
+    if not isinstance(files, list) or not all(isinstance(item, str) and item for item in files):
+        raise ValueError("Add a recording first.")
+    output = body.get("output")
+    if not isinstance(output, str) or not output:
+        output = str(Path(files[0]).parent)
+    source = files[0]
+    suffix = Path(source).suffix.lower().lstrip(".")
+    audio_format = suffix if suffix in _KEEP else "wav"
+    return _dry(call, source, output, audio_format)
+
+
+def _dry(call, source: str, output: str, audio_format: str) -> dict:
+    written: list[str] = []
+    started = time.perf_counter()
+    folder = Path(output)
+    before = {item.name for item in folder.glob(f"{Path(source).stem}*")} if folder.is_dir() else set()
+    try:
+        state = {"fraction": 0.0}
+        call.progress(0, "Taking the room echo out…")
+
+        def on_progress(fraction: float, state=state) -> None:
+            if _cancelled(call):
+                raise _Stopped()
+            state["fraction"] = fraction
+            call.progress(fraction, "Taking the room echo out…")
+
+        produced = separate_file(
+            source,
+            output,
+            method="vr",
+            model=MODEL,
+            secondary=None,
+            algorithm="avg",
+            stems=["No Reverb"],
+            audio_format=audio_format,
+            segment=8,
+            overlap=0.25,
+            aggression=10,
+            window=1024,
+            shifts=0,
+            denoise=False,
+            high_end=False,
+            tta=False,
+            gpu=False,
+            on_progress=on_progress,
+            on_status=lambda _text, state=state: call.progress(state["fraction"], "Taking the room echo out…"),
+            console_prefix="",
+        )
+        written.extend(_present(path) for path in produced)
+    except _Stopped:
+        _cleanup(folder, Path(source).stem, before)
+        return {"outputs": [], "stopped": True}
+    except ValueError as exc:
+        _cleanup(folder, Path(source).stem, before)
+        raise ValueError(_plain(str(exc))) from exc
+    except Exception as exc:
+        _cleanup(folder, Path(source).stem, before)
+        raise ValueError("The echo couldn't be removed. Your original file was not changed.") from exc
+    for path in written:
+        library.add("sound", path, Path(path).stem)
+    call.progress(1, "Saved.")
+    return {"outputs": written, "elapsed": time.strftime("%H:%M:%S", time.gmtime(int(time.perf_counter() - started)))}
+
+
+def _cancelled(call) -> bool:
+    check = getattr(call, "cancelled", None)
+    return bool(check()) if callable(check) else False
+
+
+def _present(path: str) -> str:
+    file = Path(path)
+    name = file.name.replace("_(No Reverb)", " (no echo)")
+    target = _unused(file.with_name(name))
+    if target != file:
+        file.replace(target)
+    return str(target)
+
+
+def _unused(path: Path) -> Path:
+    if not path.exists():
+        return path
+    number = 2
+    while True:
+        candidate = path.with_name(f"{path.stem} {number}{path.suffix}")
+        if not candidate.exists():
+            return candidate
+        number += 1
+
+
+def _cleanup(folder: Path, stem: str, before: set[str]) -> None:
+    if not folder.is_dir():
+        return
+    for child in folder.glob(f"{stem}*"):
+        if child.is_file() and child.name not in before and child.name != stem:
+            child.unlink(missing_ok=True)
+
+
+def _plain(text: str) -> str:
+    lowered = text.lower()
+    if "not a supported audio file" in lowered:
+        return "That file isn't audio. Choose a recording, like an MP3 or WAV."
+    if "no such file" in lowered or "not found" in lowered:
+        return "This recording can't be opened."
+    if "no space" in lowered or "not enough" in lowered:
+        return "There's not enough free space to save the new file."
+    if "permission" in lowered:
+        return "Couldn't save next to the original. Choose a folder you can write to."
+    if "being used" in lowered or "locked" in lowered:
+        return "That file is open in another app. Close it, then try again."
+    if text.startswith("The echo couldn't") or text.startswith("That file") or text.startswith("That recording") or text.startswith("Couldn't save") or text.startswith("There's not") or text.startswith("This recording"):
+        return text
+    return "The echo couldn't be removed. Your original file was not changed."
+
+
+if __name__ == "__main__":
+    run()

@@ -1,0 +1,13 @@
+{
+  "name": "de-reverb",
+  "displayName": "De-reverb",
+  "version": "0.1.0",
+  "sdk": "0.2.0",
+  "permissions": ["files", "library", "network"],
+  "dependencies": {},
+  "frontend": "dist/index.html",
+  "worker": {
+    "runtime": "python",
+    "entry": "dereverb.py"
+  }
+}
