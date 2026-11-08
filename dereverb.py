@@ -1,4 +1,4 @@
-"""SonicDryer worker. Every run uses UVR-DeEcho-DeReverb by FoxJoy."""
+"""SonicDryer. One action, dry: every run uses UVR-DeEcho-DeReverb by FoxJoy."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import time
 import traceback
 from pathlib import Path
 
-from ox1audio import job, library, run
+import ox1audio as ox
 
 from separate import separate_file
 
@@ -14,44 +14,35 @@ MODEL = "UVR-DeEcho-DeReverb by FoxJoy"
 _KEEP = {"wav", "flac", "mp3", "ogg"}
 
 
-class _Stopped(Exception):
-    pass
+@ox.action("Dry it", timeout=3 * 3600)
+def dry(recording: ox.Files("audio", multiple=False), output: ox.Folder(label="Save to") | None = None):
+    """Take the reverb and echo out of one recording. The dry copy lands next to it, or in output."""
+    source = str(recording)
+    folder = str(output or recording.parent)
+    suffix = recording.suffix.lower().lstrip(".")
+    written = _dry(source, folder, suffix if suffix in _KEEP else "wav")
+    return [ox.sound(path, title=Path(path).stem) for path in written]
 
 
-@job
-def start(call):
-    body = call.body if isinstance(call.body, dict) else {}
-    files = body.get("files")
-    if not isinstance(files, list) or not all(isinstance(item, str) and item for item in files):
-        raise ValueError("Add a recording first.")
-    output = body.get("output")
-    if not isinstance(output, str) or not output:
-        output = str(Path(files[0]).parent)
-    source = files[0]
-    suffix = Path(source).suffix.lower().lstrip(".")
-    audio_format = suffix if suffix in _KEEP else "wav"
-    return _dry(call, source, output, audio_format)
-
-
-def _dry(call, source: str, output: str, audio_format: str) -> dict:
+def _dry(source: str, output: str, audio_format: str) -> list[str]:
     written: list[str] = []
     started = time.perf_counter()
     folder = Path(output)
     before = {item.name for item in _owned(folder, Path(source).stem)}
     try:
         state = {"fraction": 0.0, "label": "Getting ready"}
-        call.progress(0, state["label"])
+        ox.progress(0, state["label"])
 
         def on_progress(fraction: float, state=state) -> None:
-            _show(call, state, fraction)
+            _show(state, fraction)
 
         def on_status(text: str, state=state) -> None:
-            _show(call, state, state["fraction"], _phase(text, "Drying audio"))
+            _show(state, state["fraction"], _phase(text, "Drying audio"))
 
         gpu = _use_gpu()
         try:
             produced = _once(source, output, audio_format, gpu, on_progress, on_status)
-        except (_Stopped, ValueError):
+        except (ox.Cancelled, ox.Problem, ValueError):
             raise
         except Exception:
             if not gpu:
@@ -60,23 +51,22 @@ def _dry(call, source: str, output: str, audio_format: str) -> dict:
             _cleanup(folder, Path(source).stem, before)
             state["fraction"] = 0.0
             state["label"] = "Getting ready"
-            call.progress(0, state["label"])
+            ox.progress(0, state["label"])
             produced = _once(source, output, audio_format, False, on_progress, on_status)
         written.extend(_present(path) for path in produced)
-    except _Stopped:
+    except ox.Cancelled:
         _cleanup(folder, Path(source).stem, before)
-        return {"outputs": [], "stopped": True}
-    except ValueError as exc:
+        raise
+    except (ox.Problem, ValueError) as exc:
         _cleanup(folder, Path(source).stem, before)
-        raise ValueError(_plain(str(exc))) from exc
+        raise ox.Problem(_plain(str(exc))) from exc
     except Exception as exc:
         traceback.print_exc()
         _cleanup(folder, Path(source).stem, before)
-        raise ValueError("The audio couldn't be dried. Your original file was not changed.") from exc
-    for path in written:
-        library.add("sound", path, Path(path).stem)
-    call.progress(1, "Saved.")
-    return {"outputs": written, "elapsed": time.strftime("%H:%M:%S", time.gmtime(int(time.perf_counter() - started)))}
+        raise ox.Problem("The audio couldn't be dried. Your original file was not changed.") from exc
+    ox.progress(1, "Saved.")
+    print(f"Dried {Path(source).name} in {time.strftime('%H:%M:%S', time.gmtime(int(time.perf_counter() - started)))}")
+    return written
 
 
 def _once(source, output, audio_format, gpu, on_progress, on_status):
@@ -104,13 +94,11 @@ def _once(source, output, audio_format, gpu, on_progress, on_status):
     )
 
 
-def _show(call, state: dict, fraction: float, label: str | None = None) -> None:
-    if _cancelled(call):
-        raise _Stopped()
+def _show(state: dict, fraction: float, label: str | None = None) -> None:
     state["fraction"] = max(state["fraction"], min(1, max(0, fraction)))
     if label:
         state["label"] = label
-    call.progress(state["fraction"], state["label"])
+    ox.progress(state["fraction"], state["label"])  # raises ox.Cancelled after Stop
 
 
 def _phase(text: str, working: str) -> str | None:
@@ -149,11 +137,6 @@ def _use_gpu() -> bool:
         return bool(mps.is_available())
     except Exception:
         return False
-
-
-def _cancelled(call) -> bool:
-    check = getattr(call, "cancelled", None)
-    return bool(check()) if callable(check) else False
 
 
 def _present(path: str) -> str:
@@ -208,6 +191,3 @@ def _plain(text: str) -> str:
         return text
     return "The audio couldn't be dried. Your original file was not changed."
 
-
-if __name__ == "__main__":
-    run()
