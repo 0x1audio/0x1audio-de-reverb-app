@@ -31,7 +31,7 @@ export function App() {
     if (pending) return
     const bridge = host()
     if (!bridge?.pathFor) {
-      toast.error("Update 0x1audio to drop files here, or use Choose audio.")
+      toast.error("Update 0x1audio to drop files here, or browse your Library.")
       return
     }
     const paths = dropped.map((item) => bridge.pathFor?.(item) ?? "").filter(Boolean)
@@ -48,14 +48,8 @@ export function App() {
     setOutputs([])
   }
 
-  async function chooseFile() {
-    const bridge = host()
-    if (!bridge?.pick) {
-      toast.error("Reopen this app in 0x1audio.")
-      return
-    }
-    const picked = await bridge.pick("file")
-    if (picked[0]) choose(picked[0], null, false)
+  function take(paths: string[]) {
+    if (paths[0]) choose(paths[0], null, false)
   }
 
   async function chooseFolder() {
@@ -135,7 +129,7 @@ export function App() {
                 description={file ? undefined : "A recording with room echo."}
                 dragging={dragging}
                 disabled={pending}
-                onChoose={() => void chooseFile()}
+                onChoose={take}
                 extra={
                   file ? (
                     <button
