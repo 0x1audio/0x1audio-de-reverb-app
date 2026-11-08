@@ -37,7 +37,7 @@ def _dry(call, source: str, output: str, audio_format: str) -> dict:
     written: list[str] = []
     started = time.perf_counter()
     folder = Path(output)
-    before = {item.name for item in folder.glob(f"{Path(source).stem}*")} if folder.is_dir() else set()
+    before = {item.name for item in _owned(folder, Path(source).stem)}
     try:
         state = {"fraction": 0.0, "label": "Getting ready"}
         call.progress(0, state["label"])
@@ -174,11 +174,15 @@ def _unused(path: Path) -> Path:
         number += 1
 
 
+def _owned(folder: Path, stem: str):
+    if not folder.is_dir() or not stem:
+        return []
+    return [child for child in folder.iterdir() if child.is_file() and child.name.startswith(stem)]
+
+
 def _cleanup(folder: Path, stem: str, before: set[str]) -> None:
-    if not folder.is_dir():
-        return
-    for child in folder.glob(f"{stem}*"):
-        if child.is_file() and child.name not in before and child.name != stem:
+    for child in _owned(folder, stem):
+        if child.name not in before and child.name != stem:
             child.unlink(missing_ok=True)
 
 
