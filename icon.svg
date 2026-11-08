@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e98a4f"/>
+      <stop offset="1" stop-color="#c2492a"/>
+    </linearGradient>
+    <linearGradient id="sun" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff3d6"/>
+      <stop offset="1" stop-color="#ffc977"/>
+    </linearGradient>
+    <mask id="bands">
+      <rect width="64" height="64" fill="#fff"/>
+      <rect y="40" width="64" height="2" fill="#000"/>
+      <rect y="45" width="64" height="3" fill="#000"/>
+    </mask>
+    <clipPath id="tile">
+      <rect width="64" height="64" rx="14"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#tile)">
+    <rect width="64" height="64" fill="url(#sky)"/>
+    <path d="M6 50a26 26 0 0 1 52 0" fill="none" stroke="#fff3d6" stroke-opacity=".5" stroke-width="2"/>
+    <path d="M1 50a31 31 0 0 1 62 0" fill="none" stroke="#fff3d6" stroke-opacity=".38" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="0 7.3"/>
+    <circle cx="32" cy="50" r="20" fill="url(#sun)" mask="url(#bands)"/>
+    <rect y="50" width="64" height="14" fill="#a83c22"/>
+  </g>
+</svg>

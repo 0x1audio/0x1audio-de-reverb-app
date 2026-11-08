@@ -1,2 +1,36 @@
 @import "tailwindcss";
 @import "@0x1audio/design-system/theme.css";
+
+/*
+  SonicDryer: dry, warm, sun-bleached. A late sun over sand, and echoes that
+  dry out into dots as they travel. The brand is terracotta in that light.
+  Only the hero and the dry waveform use these colours; everything else is the
+  design system.
+*/
+[data-app="sonicdryer"] {
+  --brand: oklch(0.6 0.15 42);
+  --brand-gradient: linear-gradient(100deg, oklch(0.88 0.1 85), oklch(0.75 0.14 62) 45%, oklch(0.6 0.16 38));
+
+  --hero-from: oklch(0.975 0.02 85);
+  --hero-to: oklch(0.935 0.045 72);
+  --hero-glow: oklch(0.9 0.08 70 / 90%);
+  --hero-sun-from: oklch(0.88 0.12 84);
+  --hero-sun-to: oklch(0.66 0.16 40);
+  --hero-line: oklch(0.62 0.13 45);
+  --hero-ink: oklch(0.27 0.05 45);
+  --hero-muted: oklch(0.45 0.05 50);
+}
+
+.dark [data-app="sonicdryer"] {
+  --brand: oklch(0.75 0.13 60);
+  --brand-gradient: linear-gradient(100deg, oklch(0.88 0.1 85), oklch(0.77 0.14 62) 45%, oklch(0.66 0.16 40));
+
+  --hero-from: oklch(0.2 0.025 45);
+  --hero-to: oklch(0.255 0.045 48);
+  --hero-glow: oklch(0.42 0.1 52 / 55%);
+  --hero-sun-from: oklch(0.86 0.13 80);
+  --hero-sun-to: oklch(0.6 0.17 38);
+  --hero-line: oklch(0.8 0.1 65);
+  --hero-ink: oklch(0.97 0.015 80);
+  --hero-muted: oklch(0.8 0.035 70);
+}
