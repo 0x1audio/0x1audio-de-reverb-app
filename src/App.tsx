@@ -1,6 +1,6 @@
 import { useRef, useState } from "react"
 import { XIcon } from "@phosphor-icons/react"
-import { Button, Dropzone, FolderField, Label, Progress, SuccessCard, Waveform, clock, toast, useFileDrop } from "@0x1audio/design-system"
+import { Button, Dropzone, FolderField, Label, Track, toast, useFileDrop } from "@0x1audio/design-system"
 import { host, job } from "@0x1audio/sdk/page"
 
 import lava from "./chroma-lava.jpg"
@@ -122,7 +122,7 @@ export function App() {
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/10 from-10% to-background" />
       </header>
       <main className="relative mx-auto flex w-full max-w-6xl flex-col px-8 pb-6">
-        <div className="flex flex-col items-center gap-2 pb-5 text-center">
+        <div className="flex flex-col items-center gap-2 py-8 text-center">
           <h1 className="text-4xl font-semibold tracking-tight text-balance">De-reverb</h1>
           <p className="text-sm text-muted-foreground">Take the room echo out. Everything else stays.</p>
         </div>
@@ -131,7 +131,6 @@ export function App() {
           <div className="flex flex-col gap-5">
             <div className="flex flex-col gap-2">
               <Dropzone
-                className="py-4"
                 title={file ? name : undefined}
                 description={file ? undefined : "A recording with room echo."}
                 dragging={dragging}
@@ -161,51 +160,33 @@ export function App() {
 
             <div className="flex flex-col gap-3">
               {pending ? (
-                <>
-                  <p className="text-sm">{status || "Getting ready"}</p>
-                  <Progress pulse value={Math.round(progress * 100)} aria-label={status || "Progress"} />
-                  <Button type="button" variant="outline-destructive" className="h-10 w-full" onClick={cancel}>
-                    <XIcon size={16} />
-                    {stopping ? "Canceling…" : "Cancel"}
-                  </Button>
-                </>
+                <Button type="button" variant="outline-destructive" className="h-10 w-full" onClick={cancel}>
+                  <XIcon size={16} />
+                  {stopping ? "Canceling…" : "Cancel"}
+                </Button>
               ) : (
                 <Button type="button" className="h-12 w-full text-base" disabled={!file} onClick={() => void start()}>
                   Start processing
                 </Button>
               )}
-              {outputs.length ? (
-                <SuccessCard
-                  className="mt-2 py-5"
-                  action={
-                    <Button type="button" variant="outline" onClick={() => void host()?.reveal?.(outputs[0])}>
-                      Show in Folder
-                    </Button>
-                  }
-                />
-              ) : null}
             </div>
           </div>
 
           <div className="flex flex-col gap-4">
-            <Waveform label="Original" detail={caption(file, source)} wave={source.wave} empty={shape(file, source, "The recording shows up here.")} />
-            <Waveform
+            <Track label="Original" file={file ? basename(file) : ""} wave={source.wave} src={source.src} empty={shape(file, source, "The recording shows up here.")} />
+            <Track
               label="No echo"
-              detail={caption(finished, result)}
+              file={finished ? basename(finished) : ""}
               wave={result.wave}
-              empty={shape(finished, result, pending ? status || "Removing echo" : "This shows up when processing finishes.")}
+              src={result.src}
+              empty={shape(finished, result, "This shows up when processing finishes.")}
+              progress={pending ? { value: Math.round(progress * 100), label: status || "Removing echo" } : null}
             />
           </div>
         </div>
       </main>
     </div>
   )
-}
-
-function caption(path: string, state: SongWave) {
-  if (!path) return ""
-  const name = basename(path)
-  return state.wave ? `${name} · ${clock(state.wave.seconds)}` : name
 }
 
 function shape(path: string, state: SongWave, idle: string) {
