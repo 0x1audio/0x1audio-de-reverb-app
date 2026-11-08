@@ -51,7 +51,7 @@ def _dry(call, source: str, output: str, audio_format: str) -> dict:
         gpu = _use_gpu()
         try:
             produced = _once(source, output, audio_format, gpu, on_progress, on_status)
-        except _Stopped:
+        except (_Stopped, ValueError):
             raise
         except Exception:
             if not gpu:
@@ -190,6 +190,8 @@ def _cleanup(folder: Path, stem: str, before: set[str]) -> None:
 
 def _plain(text: str) -> str:
     lowered = text.lower()
+    if "download this model" in lowered:
+        return "There isn't enough free space to download this model."
     if "not a supported audio file" in lowered:
         return "That file isn't audio. Choose a recording, like an MP3 or WAV."
     if "no such file" in lowered or "not found" in lowered:
