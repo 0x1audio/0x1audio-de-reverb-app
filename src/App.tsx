@@ -3,9 +3,11 @@ import { XIcon } from "@phosphor-icons/react"
 import { Button, Dropzone, FolderField, Label, Track, toast, useFileDrop } from "@0x1audio/design-system"
 import { host, job } from "@0x1audio/sdk/page"
 
-import lava from "./chroma-lava.jpg"
+import dryer from "./dryer-header.jpg"
+import nozzle from "./dryer-nozzle.jpg"
 import { basename } from "./drop.ts"
 import { useSongWave, type SongWave } from "./song-wave.ts"
+import { Wordmark } from "./wordmark.tsx"
 
 interface JobResult {
   outputs: string[]
@@ -85,14 +87,14 @@ export function App() {
       if (result.stopped) toast("Canceled", { description: "Nothing was saved." })
       else if (result.outputs.length) {
         setOutputs(result.outputs)
-        toast.success("The room echo is gone", {
+        toast.success("Dry audio is ready", {
           description: output.trim() ? `Saved to ${basename(output.trim())}.` : "Saved in the same folder as the audio.",
           action: { label: "Show in folder", onClick: () => void host()?.reveal?.(result.outputs[0]) },
         })
       }
     } catch (error) {
       if (controller.signal.aborted) toast("Canceled", { description: "Nothing was saved." })
-      else toast.error(error instanceof Error ? error.message : "The echo couldn't be removed. Your original file was not changed.")
+      else toast.error(error instanceof Error ? error.message : "The audio couldn't be dried. Your original file was not changed.")
     } finally {
       stop.current = null
       canceling.current = false
@@ -111,14 +113,17 @@ export function App() {
 
   return (
     <div className="relative min-h-svh bg-background text-foreground">
-      <header className="relative h-16">
-        <img src={lava} alt="" className="pointer-events-none absolute inset-0 size-full object-cover object-[center_22%]" />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/10 from-10% to-background" />
+      <header className="relative h-44">
+        <img src={dryer} alt="" className="pointer-events-none absolute inset-0 size-full object-cover object-center" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/10 via-black/25 to-background" />
       </header>
       <main className="relative mx-auto flex w-full max-w-6xl flex-col px-8 pb-6">
-        <div className="flex flex-col items-center gap-2 py-8 text-center">
-          <h1 className="text-4xl font-semibold tracking-tight text-balance">De-reverb</h1>
-          <p className="text-sm text-muted-foreground">Take the room echo out. Everything else stays.</p>
+        <div className="flex flex-col items-center gap-3 py-8 text-center">
+          <h1 className="flex items-center gap-4">
+            <img src={nozzle} alt="" className="size-24 rounded-full object-cover" />
+            <Wordmark className="h-14" />
+          </h1>
+          <p className="text-sm text-muted-foreground">Dry the room out of a recording.</p>
         </div>
 
         <div className="grid items-start gap-8 min-[880px]:grid-cols-2">
@@ -126,7 +131,7 @@ export function App() {
             <div className="flex flex-col gap-2">
               <Dropzone
                 title={file ? name : undefined}
-                description={file ? undefined : "A recording with room echo."}
+                description={file ? undefined : "A recording to dry."}
                 dragging={dragging}
                 disabled={pending}
                 onChoose={take}
@@ -169,12 +174,12 @@ export function App() {
           <div className="flex flex-col gap-4">
             <Track label="Original" file={file ? basename(file) : ""} wave={source.wave} src={source.src} empty={shape(file, source, "The recording shows up here.")} />
             <Track
-              label="No echo"
+              label="Dry audio"
               file={finished ? basename(finished) : ""}
               wave={result.wave}
               src={result.src}
               empty={shape(finished, result, "This shows up when processing finishes.")}
-              progress={pending ? { value: Math.round(progress * 100), label: status || "Removing echo" } : null}
+              progress={pending ? { value: Math.round(progress * 100), label: status || "Drying audio" } : null}
             />
           </div>
         </div>

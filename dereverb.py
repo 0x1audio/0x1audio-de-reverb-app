@@ -1,4 +1,4 @@
-"""De-reverb worker. Every run uses UVR-DeEcho-DeReverb by FoxJoy."""
+"""SonicDryer worker. Every run uses UVR-DeEcho-DeReverb by FoxJoy."""
 
 from __future__ import annotations
 
@@ -46,7 +46,7 @@ def _dry(call, source: str, output: str, audio_format: str) -> dict:
             _show(call, state, fraction)
 
         def on_status(text: str, state=state) -> None:
-            _show(call, state, state["fraction"], _phase(text, "Removing echo"))
+            _show(call, state, state["fraction"], _phase(text, "Drying audio"))
 
         gpu = _use_gpu()
         try:
@@ -72,7 +72,7 @@ def _dry(call, source: str, output: str, audio_format: str) -> dict:
     except Exception as exc:
         traceback.print_exc()
         _cleanup(folder, Path(source).stem, before)
-        raise ValueError("The echo couldn't be removed. Your original file was not changed.") from exc
+        raise ValueError("The audio couldn't be dried. Your original file was not changed.") from exc
     for path in written:
         library.add("sound", path, Path(path).stem)
     call.progress(1, "Saved.")
@@ -158,7 +158,7 @@ def _cancelled(call) -> bool:
 
 def _present(path: str) -> str:
     file = Path(path)
-    name = file.name.replace("_(No Reverb)", " (no echo)")
+    name = file.name.replace("_(No Reverb)", " (Dry audio)")
     target = _unused(file.with_name(name))
     if target != file:
         file.replace(target)
@@ -204,9 +204,9 @@ def _plain(text: str) -> str:
         return "Couldn't save next to the original. Choose a folder you can write to."
     if "being used" in lowered or "locked" in lowered:
         return "That file is open in another app. Close it, then try again."
-    if text.startswith("The echo couldn't") or text.startswith("That file") or text.startswith("That recording") or text.startswith("Couldn't save") or text.startswith("There's not") or text.startswith("This recording"):
+    if text.startswith("The audio couldn't") or text.startswith("That file") or text.startswith("That recording") or text.startswith("Couldn't save") or text.startswith("There's not") or text.startswith("This recording"):
         return text
-    return "The echo couldn't be removed. Your original file was not changed."
+    return "The audio couldn't be dried. Your original file was not changed."
 
 
 if __name__ == "__main__":
