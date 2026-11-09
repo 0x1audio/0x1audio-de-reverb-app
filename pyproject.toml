@@ -1,6 +1,6 @@
 [project]
 name = "de-reverb"
-version = "0.4.2"
+version = "0.4.3"
 requires-python = ">=3.13"
 license = "Apache-2.0"
 dependencies = [
