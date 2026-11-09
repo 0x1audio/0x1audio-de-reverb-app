@@ -12,7 +12,7 @@ type Run =
   | { state: "idle" }
   | { state: "working"; progress: number; label: string; stopping: boolean }
   | { state: "done"; outputs: string[] }
-  | { state: "failed"; message: string }
+  | { state: "failed"; message: string; hint?: string }
 
 export function App() {
   const [file, setFile] = useState("")
@@ -80,6 +80,7 @@ export function App() {
         setRun({
           state: "failed",
           message: error instanceof Error && error.message ? error.message : "The audio couldn't be dried. Your original file was not changed.",
+          hint: error instanceof OxError ? error.hint : undefined,
         })
       }
     } finally {
@@ -128,7 +129,8 @@ export function App() {
               {run.state === "working" ? (
                 <Working progress={run.progress} label={run.label} stopping={run.stopping} onCancel={cancel} />
               ) : (
-                <Button size="lg" variant={run.state === "done" ? "outline" : "default"} className="mt-2 w-full" onClick={() => void start()}>
+                // While an error shows, its Callout holds the one "Try again"; this button steps back.
+                <Button size="lg" variant={run.state === "done" || run.state === "failed" ? "outline" : "default"} className="mt-2 w-full" onClick={() => void start()}>
                   {run.state === "done" ? "Dry it again" : "Dry it"}
                 </Button>
               )}
@@ -171,6 +173,7 @@ export function App() {
                   }
                 >
                   {run.message}
+                  {run.hint ? <span className="mt-1 block">{run.hint}</span> : null}
                 </Callout>
               ) : (
                 <WaveSlot label="Dry copy" hint={working ? "On its way" : "Shows up here when it's ready"} working={working} />

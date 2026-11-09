@@ -59,11 +59,11 @@ def _dry(source: str, output: str, audio_format: str) -> list[str]:
         raise
     except (ox.Problem, ValueError) as exc:
         _cleanup(folder, Path(source).stem, before)
-        raise ox.Problem(_plain(str(exc))) from exc
+        raise ox.Problem(_plain(str(exc)), hint=getattr(exc, "hint", None)) from exc
     except Exception as exc:
         traceback.print_exc()
         _cleanup(folder, Path(source).stem, before)
-        raise ox.Problem("The audio couldn't be dried. Your original file was not changed.") from exc
+        raise ox.Problem(f"The audio couldn't be dried{_cause(exc)}. Your original file was not changed.", hint=_next_step(exc)) from exc
     ox.progress(1, "Saved.")
     print(f"Dried {Path(source).name} in {time.strftime('%H:%M:%S', time.gmtime(int(time.perf_counter() - started)))}")
     return written
@@ -99,6 +99,40 @@ def _show(state: dict, fraction: float, label: str | None = None) -> None:
     if label:
         state["label"] = label
     ox.progress(state["fraction"], state["label"])  # raises ox.Cancelled after Stop
+
+
+def _kind(exc: BaseException) -> str:
+    """What went wrong, in the words the person needs: memory, disk, network or unknown."""
+    import errno
+
+    seen: BaseException | None = exc
+    while seen is not None:
+        name = type(seen).__name__
+        text = str(seen).lower()
+        if isinstance(seen, MemoryError) or "out of memory" in text or name == "OutOfMemoryError":
+            return "memory"
+        if isinstance(seen, OSError) and seen.errno in (errno.ENOSPC, getattr(errno, "EDQUOT", -1)):
+            return "disk"
+        if isinstance(seen, (ConnectionError, TimeoutError)) or name in {"URLError", "HTTPError", "ConnectTimeout", "ReadTimeout"}:
+            return "network"
+        seen = seen.__cause__ or seen.__context__
+    return ""
+
+
+def _cause(exc: BaseException) -> str:
+    return {
+        "memory": ": your computer ran out of memory",
+        "disk": ": the disk is full",
+        "network": ": the reverb model couldn't download",
+    }.get(_kind(exc), "")
+
+
+def _next_step(exc: BaseException) -> str:
+    return {
+        "memory": "Close other apps, or try a shorter recording.",
+        "disk": "Free some space, or choose another folder in Save to.",
+        "network": "Check your internet connection, then try again.",
+    }.get(_kind(exc), "Try again. If it keeps happening, try a shorter recording or a WAV copy.")
 
 
 def _phase(text: str, working: str) -> str | None:
