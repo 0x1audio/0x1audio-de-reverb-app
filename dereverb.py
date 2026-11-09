@@ -1,4 +1,4 @@
-"""SonicDryer. One action, dry: every run uses UVR-DeEcho-DeReverb by FoxJoy."""
+"""De-reverb. One action, dry: every run uses UVR-DeEcho-DeReverb by FoxJoy."""
 
 from __future__ import annotations
 

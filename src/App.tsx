@@ -43,7 +43,7 @@ export function App() {
     transition(() => {
       setFile(next)
       setBlob(body)
-      setNotice(several ? `Using ${basename(next)}. SonicDryer takes one recording at a time.` : "")
+      setNotice(several ? `Using ${basename(next)}. De-reverb takes one recording at a time.` : "")
       setRun({ state: "idle" })
     })
   }
@@ -102,7 +102,7 @@ export function App() {
         {!file ? (
           <Intake
             title="Drop a recording here"
-            description="SonicDryer takes the reverb and echo out of a vocal, an instrument, or a voice note. Your original stays as it is."
+            description="De-reverb takes the reverb and echo out of a vocal, an instrument, or a voice note. Your original stays as it is."
             dragging={dragging}
             onChoose={(paths) => choose(paths[0], null)}
           />
@@ -165,7 +165,7 @@ export function App() {
                 <Callout
                   tone="danger"
                   icon={<WarningCircleIcon />}
-                  title="SonicDryer couldn't finish"
+                  title="De-reverb couldn't finish"
                   actions={
                     <Button variant="outline" size="sm" onClick={() => void start()}>
                       Try again

@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for helping with SonicDryer, an official Mixel app. A good bug report is as welcome as a pull request.
+Thank you for helping with De-reverb, an official Mixel app. A good bug report is as welcome as a pull request.
 
 ## Issues
 
