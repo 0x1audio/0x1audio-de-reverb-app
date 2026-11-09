@@ -181,6 +181,14 @@ export function App() {
             </PageSection>
           </main>
         )}
+        {/* Credits the model authors ask for (Legal, model-licences.md §4.3). The weights come from them, not from us. */}
+        <footer className="mt-auto pt-4 text-[12px] leading-relaxed text-muted-foreground">
+          De-echo and de-reverb model by FoxJoy, run with{" "}
+          <a className="underline underline-offset-2 hover:text-foreground" href="https://github.com/Anjok07/ultimatevocalremovergui" target="_blank" rel="noreferrer">
+            Ultimate Vocal Remover
+          </a>{" "}
+          (MIT). The model downloads from its authors the first time you use it.
+        </footer>
       </div>
       {dragging && !working ? <DropOverlay label={file ? "Drop to use this recording instead" : "Drop to use this recording"} /> : null}
     </div>
