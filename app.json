@@ -3,7 +3,7 @@
   "name": "de-reverb",
   "displayName": "De-reverb",
   "summary": "Take the reverb and echo out of a recording.",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "sdk": "^0.3",
   "license": "Apache-2.0",
   "entry": "dereverb.py",
@@ -18,7 +18,7 @@
       "hosts": ["github.com", "objects.githubusercontent.com", "release-assets.githubusercontent.com", "raw.githubusercontent.com"]
     }
   },
-  "accent": "#d4602f",
+  "accent": "#e29936",
   "icon": "icon.svg",
   "window": { "width": 1280, "height": 720, "minWidth": 960, "minHeight": 540 },
   "tags": ["clean-up"]
